@@ -13,6 +13,17 @@ class Host(models.Model):
                 )
             ]
         )
+
+    class TipoServicio(models.TextChoices):
+        base_datos = 'base_datos', 'Base de Datos'
+        api = 'api', 'API'
+        ssh = 'custom', "Otro"
+    
+    tipo_servicio = models.CharField(
+        max_length=13,
+        choices=TipoServicio.choices
+    )
+    
     ip_address = models.GenericIPAddressField(protocol='IPv4', unique=True)
     puerto = models.IntegerField()
     intervalo_chequeo = models.TimeField()
