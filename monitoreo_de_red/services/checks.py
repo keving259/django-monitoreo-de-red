@@ -12,7 +12,18 @@ class CheckResult:
     error: Optional[str] = None
     
 def check_host(host):
-    pass
+    ping_result = ping(host.ip_address)
+    result = CheckResult(estado=ping_result['estado'], tiempo_respuesta_ms=ping_result['tiempo'])
+    
+    if result.estado == 'up':
+        if host.tipo_servicio in ('web', 'api'):
+            return _check_http(host)
+        else:
+            return _check_socket(host)
+        
+    else:
+        return result
+    
 
 def ping(host):
     param = '-n' if platform.system().lower() == 'windows' else '-c'
