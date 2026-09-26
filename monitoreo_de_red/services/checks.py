@@ -4,6 +4,8 @@ import platform
 import subprocess
 import re
 from statistics import median
+import socket
+import time
 
 @dataclass
 class CheckResult:
@@ -53,7 +55,82 @@ def ping(host):
 
 
 def _check_http(host):
-    pass
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(2)
+    
+    try:
+        inicio = time.time()
+        sock.connect((host.ip_address, host.puerto))
+        
+        request = (
+            f'GET / HTTP/1.1\r\n'
+            f'Host: {host.ip_address}\r\n'
+            f'Connection: close\r\n'
+            f'\r\n'
+        )
+        
+        sock.sendall(request.encode())
+        response = sock.recv(4096).decode(errors='ignore')
+        tiempo_ms = round((time.time() - inicio) * 1000)
+        
+        if response.startswith('HTTP/'):
+            return CheckResult(estado='up', tiempo_respuesta_ms=tiempo_ms)
+        else:
+            return CheckResult(
+                estado='down',
+                tiempo_respuesta_ms=None,
+                mensaje_error=f'El servicio en {host.ip_address}:{host.puerto} no respondió mediante HTTP'
+            )
+            
+    except socket.timeout:
+        return CheckResult(
+            estado='timeout',
+            tiempo_respuesta_ms=None,
+            mensaje_error=f'Timeout al conectar con {host.ip_address}:{host.puerto}'
+        )
+    
+    except OSError as e:
+        return CheckResult(
+            estado='down',
+            tiempo_respuesta_ms=None,
+            mensaje_error=f'Error al comprobar HTTP en {host.ip_address}:{host.puerto}: {e}'
+        )
+    
+    finally:
+        sock.close()
 
 def _check_socket(host):
-    pass
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(2)
+    
+    try:
+        inicio = time.time()
+        result = sock.connect_ex((host.ip_address, host.puerto))
+        tiempo_ms = round((time.time() - inicio) * 1000)
+        
+        if result == 0:
+            return CheckResult(estado='up', tiempo_resupuesta_ms=tiempo_ms)
+        else:
+            return CheckResult(
+                estado='down',
+                tiempo_respuesta_ms=None,
+                mensaje_error=f'No se puede establecer la conexión con {host.ip_address}:{host.puerto}'
+            )
+            
+    except socket.timeout:
+        return CheckResult(
+            estado='timeout',
+            tiempo_respuesta_ms=None,
+            mensaje_error=f'Tiempo al conectar con {host.ip_address}:{host.puerto}'
+        )
+    
+    except OSError as e:
+        return CheckResult(
+            estado='down',
+            tiempo_respuesta_ms=None,
+            mensaje_error=f'Error al comprobar el puerto en {host.ip_address}:{host.puerto}: {e}'
+        )
+        
+    finally:
+        sock.close()
+    
