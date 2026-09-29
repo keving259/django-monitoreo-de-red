@@ -7,7 +7,7 @@ class Chequeo(models.Model):
         'hosts.Host',
         on_delete=models.CASCADE
     )
-    fecha_hora = models.DateTimeField()
+    fecha_hora = models.DateTimeField(auto_now_add=True)
 
     class Estado(models.TextChoices):
         UP = 'up', 'Up'
@@ -18,7 +18,7 @@ class Chequeo(models.Model):
         max_length=7,
         choices=Estado.choices
     )
-    tiempo_respuesta_ms = models.IntegerField()
+    tiempo_respuesta_ms = models.IntegerField(null=True)
 
 class Alerta(models.Model):
     chequeo = models.ForeignKey(
@@ -34,5 +34,5 @@ class Alerta(models.Model):
         choices=Nivel.choices
     )
     mensaje = models.TextField()
-    resuelta = models.BooleanField()
-    fecha_creacion = models.DateTimeField()
+    resuelta = models.BooleanField(default=False)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
