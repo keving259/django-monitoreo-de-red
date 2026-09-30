@@ -2,12 +2,11 @@ from dataclasses import dataclass
 from typing import Optional
 import platform
 import subprocess
-import re
 from statistics import median
 import socket
 import time
 from hosts.models import Host
-from models import Chequeo, Alerta
+from network_checks.models import Chequeo, Alerta
 
 @dataclass
 class CheckResult:
