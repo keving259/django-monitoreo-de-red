@@ -6,6 +6,8 @@ import re
 from statistics import median
 import socket
 import time
+from hosts.models import Host
+from models import Chequeo, Alerta
 
 @dataclass
 class CheckResult:
@@ -27,26 +29,38 @@ def check_host(host):
         return result
     
 
-def ping(host):
-    param = '-n' if platform.system().lower() == 'windows' else '-c'
-    cmd = ['ping', param, '4', host]
+def ping(host, count=4, timeout=1):
+    times = []
     
-    result = subprocess.run(
-        cmd,
-        capture_output=True,
-        text=True
-    )
+    is_windows = platform.system().lower() == 'windows'
+    count_param = '-n' if is_windows else '-c'
+    timeout_param = '-w' if is_windows else '-W'
+    timeout_value = str(int(timeout * 1000)) if is_windows else str(timeout)
     
-    output = result.stdout
-    
-    times = re.findall(r'tiempo[=<]\s*(\d+)\s*m', output, re.IGNORECASE)
-    times = [int(t) for t in times]
-    
+    for _ in range(count):
+        inicio = time.monotonic()
+        
+        try:
+            result = subprocess.run(
+                ['ping', count_param, '1', timeout_param, timeout_value, host],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=timeout+1
+            )
+            
+            if result.returncode == 0:
+                times.append(
+                    (time.monotonic() - inicio) * 1000
+                )
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+        
     if times:
         return {
             'estado' : 'up',
-            'tiempo' : median(times)
+            'tiempo' : round(median(times), 2)
         }
+    
     else:
         return {
             'estado' : 'timeout',
@@ -134,3 +148,16 @@ def _check_socket(host):
     finally:
         sock.close()
     
+def check_all_hosts():
+    for host in Host.objects.filter(activo=True):
+        result = check_host(host)
+        check = Chequeo.objects.create(
+            host=host,
+            estado=result.estado,
+            tiempo_resupuesta_ms=result.tiempo_respuesta_ms
+        )
+        if result.estado == 'up':
+            Alerta.objects.filter(chequeo__host=host, resuelta=False).update(resuelta=True)
+        else:
+            nivel = 'warning' if result.estado == 'timeout' else 'critical'
+            Alerta.objects.create(chequeo=check, nivel=nivel, mensaje=result.error or 'Host no disponible')
