@@ -12,6 +12,7 @@ class HostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Host
         fields = ['nombre', 'hostname', 'ip_address', 'tipo_servicio', 'puerto', 'intervalo_chequeo', 'propietario', 'activo']
+        read_only_fields = ['propietario']
 
 class CheckSerializer(serializers.ModelSerializer):
     class Meta:
