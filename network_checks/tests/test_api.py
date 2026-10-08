@@ -69,9 +69,8 @@ def test_administrador_puede_crear_host(admin_user, host_test):
         'hostname' : 'router',
         'ip_address' : '192.168.1.1',
         'tipo_servicio' : 'custom',
-        'puerto' : 800,
+        'puerto' : 8000,
         'intervalo_chequeo' : time(0, 5, 0),
-        
         'activo': True
     }
     

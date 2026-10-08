@@ -10,7 +10,7 @@ class HostViewSet(viewsets.ModelViewSet):
     serializer_class = HostSerializer
     
     def perform_create(self, serializer):
-        serializer.save(propietario=self.request.user, created_by=self.request.user)
+        serializer.save(propietario=self.request.user)
 
 class CheckViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Chequeo.objects.all()
