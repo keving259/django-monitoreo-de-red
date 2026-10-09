@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from .serializers import UserSerializer
+from django.contrib.auth import authenticate, login
+from django.shortcuts import render, redirect
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -24,3 +26,27 @@ def login(request):
     role = group.name if group else None
     
     return Response({'token' : token.key, 'user' : serializer.data, 'role' : role}, status=status.HTTP_200_OK)
+
+def login_page(request):
+    if request.user.is_authenticated:
+        return render('dashboard')
+    
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        user = authenticate(
+            request,
+            username=username,
+            password=password
+        )
+        
+        if user is not None:
+            login(request, user)
+            return redirect('dashboard')
+        
+        return render(request, 'login.html', {
+            'error': "Usuario o contraseña incorrectos"
+        })
+    
+    return render(request, 'login.html')
