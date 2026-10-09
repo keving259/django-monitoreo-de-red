@@ -67,7 +67,7 @@ ROOT_URLCONF = 'monitoreo_de_red.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'monitoreo_de_red' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
