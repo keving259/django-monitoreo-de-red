@@ -73,3 +73,32 @@ resetButton.addEventListener('click', () => {
 
     usernameInput.focus();
 });
+
+document.addEventListener("DOMContentLoaded", () => {
+    const toggleButtons = document.querySelectorAll('[data-pw-toggle]');
+
+    toggleButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const inputId = button.getAttribute('aria-controls');
+            const passwordInput = document.getElementById(inputId);
+
+            if (!passwordInput) return;
+
+            const isPassword = passwordInput.type === 'password';
+
+            passwordInput.type = isPassword ? 'text' : 'password';
+
+            button.setAttribute('aria-pressed', String(isPassword));
+            button.setAttribute(
+                'aria-label',
+                isPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+            );
+
+            const eyeOn = button.querySelector('.login__eye-on');
+            const eyeOff = button.querySelector('.login__eye-off');
+
+            if (eyeOn) eyeOn.style.display = isPassword ? 'none' : 'block';
+            if (eyeOff) eyeOff.style.display = isPassword ? 'block' : 'none'
+        });
+    });
+});

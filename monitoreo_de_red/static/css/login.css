@@ -382,6 +382,14 @@ body {
   cursor: pointer;
 }
 
+.login__eye-off {
+  display: none;
+}
+
+.login__eye-on, .login__eye-off {
+  pointer-events: none;
+}
+
 .login__eye:hover {
   background: #1b2030;
   color: var(--login-ink);
