@@ -45,7 +45,7 @@ loginForm.addEventListener('submit', async (e) => {
             return;
         }
 
-        sessionStorage.setItem('authToken', data.token);
+        localStorage.setItem('authToken', data.token);
 
         formView.hidden = true;
         successView.hidden = false;
