@@ -27,9 +27,11 @@ class HostSerializer(serializers.ModelSerializer):
         }
 
 class CheckSerializer(serializers.ModelSerializer):
+    nombre_host = serializers.CharField(source='host.nombre', read_only=True)
     class Meta:
         model = Chequeo
-        fields = ['host', 'fecha_hora', 'estado', 'tiempo_respuesta_ms']
+        fields = ['id', 'host', 'fecha_hora', 'estado', 'tiempo_respuesta_ms']
+        read_only_fields = fields
 
 class AlertSerializer(serializers.ModelSerializer):
     class Meta:
