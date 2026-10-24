@@ -26,7 +26,7 @@ class Host(models.Model):
     
     ip_address = models.GenericIPAddressField(protocol='IPv4', unique=True)
     puerto = models.IntegerField()
-    intervalo_chequeo = models.TimeField()
+    intervalo_chequeo = models.PositiveIntegerField(default=60)
     propietario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

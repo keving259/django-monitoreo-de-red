@@ -39,7 +39,9 @@ if (!token) {
   const crearIp = document.getElementById("crear-ip");
   const crearPuerto = document.getElementById("crear-puerto");
   const crearTipo = document.getElementById("crear-tipo");
-  const crearIntervalo = document.getElementById("crear-intervalo");
+  const crearHoras = document.getElementById("crear-horas");
+  const crearMinutos = document.getElementById("crear-minutos");
+  const crearSegundos = document.getElementById("crear-segundos");
   const crearActivo = document.getElementById("crear-activo");
 
   let hosts = [];
@@ -87,6 +89,58 @@ if (!token) {
     return `Error HTTP: ${status}`;
   }
 
+  function obtenerIntervaloSegundos() {
+    const horas = Number(crearHoras.value);
+    const minutos = Number(crearMinutos.value);
+    const segundos = Number(crearSegundos.value);
+
+    return horas * 3600 + minutos * 60 + segundos
+  }
+
+  function validarIntervalo() {
+    const fields = [crearHoras, crearMinutos, crearSegundos];
+
+    for (const field of fields) {
+      const value = Number(field.value);
+
+      if (
+        field.value.trim() === "" ||
+        !Number.isInteger(value) ||
+        value < 0 ||
+        !field.checkValidity()
+      ) {
+        field.reportValidity();
+        return false;
+      }
+    }
+
+    if (obtenerIntervaloSegundos() <= 0) {
+      crearError.textContent = "El intervalo de chequeo debe ser mayor que cero.";
+      crearMinutos.focus();
+      return false;
+    }
+    return true;
+  }
+
+  function formatearIntervalo(totalSegundos) {
+    const total = Number(totalSegundos);
+
+    if (!Number.isInteger(total) || total < 0) {
+      return '-';
+    }
+
+    const horas = Math.floor(total / 3600);
+    const minutos = Math.floor((total % 3600) / 60);
+    const segundos = total % 60;
+
+    return [
+      String(horas).padStart(2, "0"),
+      String(minutos).padStart(2, '0'),
+      String(segundos).padStart(2, "0")
+    ].join(":")
+  }
+
+
   async function errorMessageResponse(response) {
     try {
       const errorData = await response.json();
@@ -113,16 +167,6 @@ if (!token) {
       ip_address: String(host.ip_address ?? ""),
       puerto: Number(host.puerto),
       activo: host.activo === true || host.activo === "True",
-    };
-  }
-
-  function obtenerValoresEdicion() {
-    return {
-      nombre: editNombre.value.trim(),
-      hostname: editHostname.value.trim(),
-      ip_address: editIp.value.trim(),
-      puerto: Number(editPuerto.value),
-      activo: editActivo.value === "True",
     };
   }
 
@@ -218,7 +262,7 @@ if (!token) {
         host.tipo_servicio,
         host.ip_address,
         host.puerto,
-        host.intervalo_chequeo,
+        formatearIntervalo(host.intervalo_chequeo),
       ];
 
       valores.forEach((valor) => {
@@ -478,13 +522,15 @@ if (!token) {
       return;
     }
 
+    if (!validarIntervalo()) return;
+
     const newHost = {
       nombre: crearNombre.value.trim(),
       hostname: crearHostname.value.trim(),
       ip_address: crearIp.value.trim(),
       puerto: Number(crearPuerto.value),
       tipo_servicio: crearTipo.value,
-      intervalo_chequeo: crearIntervalo.value,
+      intervalo_chequeo: obtenerIntervaloSegundos(),
       activo: crearActivo.value === 'true'
     };
 

@@ -13,8 +13,16 @@ class HostSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Host
-        fields = ['id', 'nombre', 'hostname', 'ip_address', 'tipo_servicio', 'puerto', 'intervalo_chequeo', 'propietario', 'activo', 'ultimo_chequeo']
+        fields = '__all__'
         read_only_fields = ['propietario']
+        
+    def validate_intervalo_chequeo(self, value):
+        if value <= 0:
+            raise serializers.ValidationError(
+                "El intervalo debe ser mayor que cero."
+            )
+        
+        return value
     
     def get_ultimo_chequeo(self, obj):
         check = obj.chequeo_set.order_by('-fecha_hora').first()
