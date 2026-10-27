@@ -153,7 +153,7 @@ def check_all_hosts():
         check = Chequeo.objects.create(
             host=host,
             estado=result.estado,
-            tiempo_resupuesta_ms=result.tiempo_respuesta_ms
+            tiempo_respuesta_ms=result.tiempo_respuesta_ms
         )
         if result.estado == 'up':
             Alerta.objects.filter(chequeo__host=host, resuelta=False).update(resuelta=True)
