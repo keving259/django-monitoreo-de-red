@@ -30,13 +30,22 @@ async function cargarChequeos() {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
 
-    cell.colSpan = 5;
+    cell.colSpan = 4;
     cell.className = "text-center text-danger";
     cell.textContent = "No se pudieron cargar los chequeos.";
 
     row.appendChild(cell);
     tbody.appendChild(row);
   }
+}
+
+function estadoBadge(estado) {
+  const colors = {
+    up: "bg-success",
+    down: "bg-danger",
+  };
+
+  return colors[estado] ?? "bg-secondary";
 }
 
 function renderizarChequeos(checks) {
@@ -46,7 +55,7 @@ function renderizarChequeos(checks) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
 
-    cell.colSpan = 5;
+    cell.colSpan = 4;
     cell.className = "text-center";
     cell.textContent = "No hay chequeos registrados.";
 
@@ -58,20 +67,30 @@ function renderizarChequeos(checks) {
   checks.forEach((check) => {
     const row = document.createElement("tr");
 
-    const values = [
-      check.nombre_host,
-      check.fecha_hora
-        ? new Date(check.fecha_hora).toLocaleDateString("es-MX")
-        : "-",
-      check.estado,
-      check.tiempo_respuesta_ms ?? "-",
-    ];
+    const nombreCell = document.createElement("td");
+    nombreCell.textContent = String(check.nombre_host ?? "-");
+    row.appendChild(nombreCell);
 
-    values.forEach((value) => {
-      const cell = document.createElement("td");
-      cell.textContent = String(value ?? "-");
-      row.appendChild(cell);
-    });
+    const fechaCell = document.createElement("td");
+    fechaCell.textContent = check.fecha_hora
+      ? new Date(check.fecha_hora).toLocaleDateString("es-MX")
+      : "-";
+
+    row.appendChild(fechaCell);
+
+    const estadoCell = document.createElement("td");
+    const badge = document.createElement("span");
+
+    badge.className = `badge ${estadoBadge(check.estado)}`;
+    badge.textContent = String(check.estado ?? '-');
+
+    estadoCell.appendChild(badge);
+    row.appendChild(estadoCell);
+
+    const tiempoCell = document.createElement("td");
+    tiempoCell.textContent = String(check.tiempo_respuesta_ms ?? "-");
+
+    row.appendChild(tiempoCell);
 
     tbody.appendChild(row);
   });
