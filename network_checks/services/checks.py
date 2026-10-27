@@ -122,7 +122,7 @@ def _check_socket(host):
         tiempo_ms = round((time.time() - inicio) * 1000)
         
         if result == 0:
-            return CheckResult(estado='up', tiempo_resupuesta_ms=tiempo_ms)
+            return CheckResult(estado='up', tiempo_respuesta_ms=tiempo_ms)
         else:
             return CheckResult(
                 estado='down',
