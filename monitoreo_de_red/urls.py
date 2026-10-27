@@ -14,6 +14,7 @@ router.register('alertas', AlertViewSet)
 urlpatterns = [
     path('', include(router.urls)),
     path('', include('hosts.urls')),
+    path('', include('network_checks.urls')),
     path('admin/', admin.site.urls),
     path('api-auth/', include('rest_framework.urls')),
     path('login/', views.login_page, name='login_page'),
