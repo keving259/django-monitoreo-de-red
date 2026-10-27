@@ -7,8 +7,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from network_checks.services.checks import check_all_hosts
 from rest_framework import generics
-from .models import Chequeo
-from monitoreo_de_red.serializers import CheckSerializer
+from .models import Chequeo, Alerta
+from monitoreo_de_red.serializers import CheckSerializer, AlertSerializer
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -25,3 +25,10 @@ class CheckListView(generics.ListAPIView):
 
 def checks(request):
     return render(request, 'checks.html')
+
+class AlertListView(generics.ListAPIView):
+    queryset = Alerta.objects.select_related('chequeo').order_by('-fecha_creacion')
+    serializer_class = AlertSerializer
+
+def alerts(request):
+    return render(request, 'alerts.html')
