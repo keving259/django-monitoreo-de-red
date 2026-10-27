@@ -122,7 +122,7 @@ def _check_socket(host):
         tiempo_ms = round((time.time() - inicio) * 1000)
         
         if result == 0:
-            return CheckResult(estado='up', tiempo_resupuesta_ms=tiempo_ms)
+            return CheckResult(estado='up', tiempo_respuesta_ms=tiempo_ms)
         else:
             return CheckResult(
                 estado='down',
@@ -153,7 +153,7 @@ def check_all_hosts():
         check = Chequeo.objects.create(
             host=host,
             estado=result.estado,
-            tiempo_resupuesta_ms=result.tiempo_respuesta_ms
+            tiempo_respuesta_ms=result.tiempo_respuesta_ms
         )
         if result.estado == 'up':
             Alerta.objects.filter(chequeo__host=host, resuelta=False).update(resuelta=True)
