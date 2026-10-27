@@ -1,15 +1,14 @@
 {% extends "base.html" %}
 {% load static %}
 
-  {% block content %}
-  <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-    <h4 class="mb-0">Hosts Registrados</h4>
+{% block table_header %}
+  <h4 class="mb-0">Hosts Registrados</h4>
+  <button type="button" class="btn btn-success" id='btn-crear-host'><i class="bi bi-plus-lg">Nuevo Host</i></button>
+{% endblock table_header %}
 
-    <button type="button" class="btn btn-success" id='btn-crear-host'><i class="bi bi-plus-lg">Nuevo Host</i></button>
-  </div>
-    <div class='table-responsive'>
-      <table class="table table-striped table-hover" id="tabla-hosts">
+
+  {% block content %}
+  <table class="table table-striped table-hover" id="tabla-hosts">
         <thead>
           <tr>
               <th scope="col">Nombre</th>
