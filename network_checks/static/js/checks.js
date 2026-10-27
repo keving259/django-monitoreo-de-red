@@ -1,6 +1,4 @@
-const { renderFile } = require("ejs");
-
-const token = localStorage.getItem("token");
+const token = localStorage.getItem("authToken");
 const tbody = document.querySelector("#tabla-checks tbody");
 
 async function cargarChequeos() {
@@ -61,7 +59,6 @@ function renderizarChequeos(checks) {
     const row = document.createElement("tr");
 
     const values = [
-      check.id,
       check.nombre_host,
       check.fecha_hora
         ? new Date(check.fecha_hora).toLocaleDateString("es-MX")
