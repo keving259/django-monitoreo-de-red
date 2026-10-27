@@ -29,6 +29,3 @@ def login(request):
 
 def login_page(request):
     return render(request, 'login.html')
-
-def logout(request):
-    pass

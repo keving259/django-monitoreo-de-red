@@ -20,5 +20,4 @@ urlpatterns = [
     path('login/', views.login_page, name='login_page'),
     path('api/login/', views.login, name='api_login'),
     path('api/hosts/', hosts, name='hosts'),
-    path('logout/', views.logout, name='logout'),
 ]
