@@ -1,13 +1,44 @@
 const loginForm = document.querySelector('.login__form');
 const usernameInput = document.getElementById('login-username');
 const passwordInput = document.getElementById('login-pw');
-
-const successView = document.querySelector('[data-success]');
-const formView = document.querySelector('[data-view]');
 const liveMessage = document.querySelector('[data-live]');
-const doneText = document.querySelector('[data-done-text]');
-const resetButton = document.querySelector('[data-reset]');
 const submitButton = loginForm.querySelector('[type="submit"]');
+
+function getRedirectUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get("next");
+
+    if (next) {
+        try {
+            const destination = new URL(next, window.location.origin);
+
+            if (destination.origin === window.location.origin) {
+                return destination.pathname + destination.search + destination.hash;
+            }
+        } catch {
+            /* Ruta predeterminada */
+        }
+    }
+    return '/api/hosts/';
+}
+
+function showToast(message) {
+    sessionStorage.setItem('toastMessage', message);
+    window.location.assign(getRedirectUrl());
+}
+
+function getCookie(name) {
+    const cookies = document.cookie.split(';');
+
+    for (const cookie of cookies) {
+        const [key, ...value] = cookie.trim().split('=');
+
+        if (key === name) {
+            return decodeURIComponent(value.join('='));
+        }
+    }
+    return null;
+}
 
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -28,13 +59,18 @@ loginForm.addEventListener('submit', async (e) => {
     submitButton.disabled = true;
     submitButton.textContent = 'Iniciando sesión...';
 
+    const next = getRedirectUrl();
+    const csrfToken = getCookie('csrftoken');
+
     try {
         const response = await fetch('/api/login/', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
             },
-            body: JSON.stringify({ username, password }),
+            body: JSON.stringify({ username, password, next }),
         });
 
         const data = await response.json();
@@ -47,13 +83,8 @@ loginForm.addEventListener('submit', async (e) => {
 
         localStorage.setItem('authToken', data.token);
 
-        formView.hidden = true;
-        successView.hidden = false;
+        showToast(`Bienvenido, ${username}!`);
 
-        doneText.textContent = 
-            `Sesión iniciada correctamente. Bienvenido, ${username}`;
-        
-        successView.focus();
     } catch (error) {
         console.log("Error al iniciar sesión:", error);
         liveMessage.textContent =
@@ -64,41 +95,34 @@ loginForm.addEventListener('submit', async (e) => {
     }
 });
 
-resetButton.addEventListener('click', () => {
-    successView.hidden = true;
-    formView.hidden = false;
+document.querySelectorAll("[data-pw-toggle]").forEach((button) => {
+    button.addEventListener('click', () => {
+        const inputId = button.getAttribute('aria-controls');
+        const input = document.getElementById(inputId);
 
-    loginForm.reset();
-    liveMessage.textContent = '';
+        if (!input) {
+            return;
+        }
 
-    usernameInput.focus();
-});
+        const showPassword = input.type === 'password';
 
-document.addEventListener("DOMContentLoaded", () => {
-    const toggleButtons = document.querySelectorAll('[data-pw-toggle]');
+        input.type = showPassword ? 'text' : 'password';
 
-    toggleButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-            const inputId = button.getAttribute('aria-controls');
-            const passwordInput = document.getElementById(inputId);
+        button.setAttribute('aria-pressed', String(showPassword));
+        button.setAttribute(
+            'aria-label',
+            showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+        );
+        
+        const eyeOn = button.querySelector('.login__eye-on');
+        const eyeOff = button.querySelector('.login__eye-off');
 
-            if (!passwordInput) return;
+        if (eyeOn) {
+            eyeOn.style.display = showPassword ? 'none' : 'block';
+        }
 
-            const isPassword = passwordInput.type === 'password';
-
-            passwordInput.type = isPassword ? 'text' : 'password';
-
-            button.setAttribute('aria-pressed', String(isPassword));
-            button.setAttribute(
-                'aria-label',
-                isPassword ? "Ocultar contraseña" : "Mostrar contraseña"
-            );
-
-            const eyeOn = button.querySelector('.login__eye-on');
-            const eyeOff = button.querySelector('.login__eye-off');
-
-            if (eyeOn) eyeOn.style.display = isPassword ? 'none' : 'block';
-            if (eyeOff) eyeOff.style.display = isPassword ? 'block' : 'none'
-        });
+        if (eyeOff) {
+            eyeOff.style.display = showPassword ? 'block' : 'none'
+        }
     });
 });
