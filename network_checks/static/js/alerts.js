@@ -2,12 +2,8 @@ const token = localStorage.getItem("authToken");
 const tbody = document.querySelector("#tabla-alerts tbody");
 
 async function cargarAlertas() {
-  if (!token) {
-    window.location.href = "/login/";
-    return;
-  }
   try {
-    const response = await fetch("/alerts/", {
+    const response = await fetch("/api/alerts/", {
       headers: {
         Authorization: `Token ${token}`,
       },

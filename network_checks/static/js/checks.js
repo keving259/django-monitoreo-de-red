@@ -2,13 +2,8 @@ const token = localStorage.getItem("authToken");
 const tbody = document.querySelector("#tabla-checks tbody");
 
 async function cargarChequeos() {
-  if (!token) {
-    window.location.href = "/login/";
-    return;
-  }
-
   try {
-    const response = await fetch("/checks/", {
+    const response = await fetch("/api/checks/", {
       headers: {
         Authorization: `Token ${token}`,
       },

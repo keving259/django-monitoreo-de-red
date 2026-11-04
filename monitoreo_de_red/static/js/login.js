@@ -19,7 +19,7 @@ function getRedirectUrl() {
             /* Ruta predeterminada */
         }
     }
-    return '/api/hosts/';
+    return '/hosts/';
 }
 
 function showToast(message) {

@@ -1,4 +1,4 @@
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny
 from django.contrib.auth.models import User
 from rest_framework.response import Response
@@ -7,10 +7,11 @@ from rest_framework.authtoken.models import Token
 from .serializers import UserSerializer
 from django.contrib.auth import authenticate, login
 from django.shortcuts import render, redirect
-from django.contrib.auth import login as auth_login
+from django.contrib.auth import login as auth_login, logout as auth_logout
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.csrf import csrf_protect
+from rest_framework.authentication import SessionAuthentication 
 
 @csrf_protect
 @api_view(['POST'])
@@ -31,17 +32,30 @@ def login(request):
     group = user.groups.first()
     role = group.name if group else None
     
-    next_url = request.data.get('next') or '/api/hosts/'
+    next_url = request.data.get('next') or '/hosts/'
     
     if not url_has_allowed_host_and_scheme(
         url=next_url,
         allowed_hosts={request.get_host()},
         require_https=request.is_secure(),
     ):
-        next_url = '/api/hosts/'
+        next_url = '/hosts/'
     
     return Response({'token' : token.key, 'user' : serializer.data, 'role' : role, 'next': next_url}, status=status.HTTP_200_OK)
 
 @ensure_csrf_cookie
 def login_page(request):
     return render(request, 'login.html')
+
+@api_view(['POST'])
+@authentication_classes([SessionAuthentication])
+@permission_classes([AllowAny])
+def logout(request):
+    if request.user.is_authenticated:
+        Token.objects.filter(user=request.user).delete()
+        auth_logout(request)
+        
+    return Response(
+        {'message': 'Sesión cerrada correctamente'},
+        status=status.HTTP_200_OK
+    )

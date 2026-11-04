@@ -10,6 +10,7 @@ from rest_framework import generics
 from .models import Chequeo, Alerta
 from monitoreo_de_red.serializers import CheckSerializer, AlertSerializer
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -26,6 +27,7 @@ class CheckListView(generics.ListAPIView):
     serializer_class = CheckSerializer
 
 @login_required(login_url='/login/')
+@ensure_csrf_cookie
 def checks(request):
     return render(request, 'checks.html')
 
@@ -34,5 +36,6 @@ class AlertListView(generics.ListAPIView):
     serializer_class = AlertSerializer
 
 @login_required(login_url='/login/')
+@ensure_csrf_cookie
 def alerts(request):
     return render(request, 'alerts.html')
