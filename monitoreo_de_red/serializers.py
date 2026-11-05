@@ -13,8 +13,8 @@ class HostSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Host
-        fields = '__all__'
-        read_only_fields = ['propietario']
+        fields = ['id', 'nombre', 'hostname', 'tipo_servicio', 'ip_address', 'puerto', 'intervalo_chequeo', 'propietario', 'activo', 'ultimo_chequeo']
+        read_only_fields = ['id', 'propietario', 'ultimo_chequeo']
         
     def validate_intervalo_chequeo(self, value):
         if value <= 0:

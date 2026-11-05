@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from django.core.validators import RegexValidator
+from django.core.validators import RegexValidator, MinValueValidator, MaxValueValidator
 
 # Create your models here.
 class Host(models.Model):
@@ -25,8 +25,18 @@ class Host(models.Model):
     )
     
     ip_address = models.GenericIPAddressField(protocol='IPv4', unique=True)
-    puerto = models.IntegerField()
-    intervalo_chequeo = models.PositiveIntegerField(default=60)
+    puerto = models.PositiveIntegerField(
+        validators=[
+            MinValueValidator(1),
+            MaxValueValidator(65535)
+        ]
+    )
+    intervalo_chequeo = models.PositiveIntegerField(
+        default=60,
+        validators=[
+            MinValueValidator(1)
+        ]
+    )
     propietario = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
