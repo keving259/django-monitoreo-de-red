@@ -5,6 +5,7 @@ from . import views
 from hosts.views import hosts
 from network_checks.views import checks, alerts
 from django.contrib import admin
+from django.views.generic import RedirectView
 
 router = routers.DefaultRouter()
 
@@ -17,6 +18,7 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls')),
     
     # Autenticación
+    path('', RedirectView.as_view(url='/login/', permanent=False), name='home'),
     path('login/', views.login_page, name='login_page'),
     path('api/login/', views.login, name='api_login'),
     path('api/logout/', views.logout, name='api_logout'),
