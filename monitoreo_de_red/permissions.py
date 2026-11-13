@@ -29,7 +29,9 @@ class HostPermission(BasePermission):
         if is_admin(request.user):
             return True
         if is_system(request.user):
-            return obj.propietario == request.user
+            if request.method in ['PUT', 'PATCH', 'DELETE']:
+                return obj.propietario == request.user
+            
         return False
 
 class OnlyAdminManagesUsers(BasePermission):

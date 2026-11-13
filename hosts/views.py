@@ -6,4 +6,10 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 @login_required(login_url='/login/')
 @ensure_csrf_cookie
 def hosts(request):
-    return render(request, 'hosts.html')
+    groups = request.user.groups.values_list('name', flat=True)
+    
+    return render(request, 'hosts.html', {
+        'is_admin' : "Administrador" in groups,
+        'is_system' : "Sistema" in groups,
+        'user_id' : request.user.id,
+    })

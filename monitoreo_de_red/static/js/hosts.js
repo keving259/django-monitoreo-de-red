@@ -3,7 +3,19 @@ const token = localStorage.getItem("authToken");
 const tbody = document.querySelector("#tabla-hosts tbody");
 
 const modalElement = document.getElementById("modalEditar");
-const modalEdit = bootstrap.Modal.getOrCreateInstance(modalElement);
+const modalCreateElement = document.getElementById("modalCrear");
+
+const modalEdit = modalElement
+  ? bootstrap.Modal.getOrCreateInstance(modalElement)
+  : null;
+const modalCreate = modalCreateElement
+  ? bootstrap.Modal.getOrCreateInstance(modalCreateElement)
+  : null;
+
+  const editTipo = document.getElementById('editar-tipo');
+  const editHoras = document.getElementById('editar-horas');
+  const editMinutos = document.getElementById('editar-minutos')
+  const editSegundos = document.getElementById('editar-segundos');
 
 const formEdit = document.getElementById("form-editar");
 const editId = document.getElementById("editar-id");
@@ -14,9 +26,6 @@ const editPuerto = document.getElementById("editar-puerto");
 const editActivo = document.getElementById("editar-activo");
 const editError = document.getElementById("editar-error");
 const guardarBtn = document.getElementById("guardar-cambios");
-
-const modalCreateElement = document.getElementById("modalCrear");
-const modalCreate = bootstrap.Modal.getOrCreateInstance(modalCreateElement);
 
 const btnCreateHost = document.getElementById("btn-crear-host");
 const formCreate = document.getElementById("form-crear");
@@ -46,9 +55,15 @@ let valoresOriginales = null;
 let pasoActual = 1;
 
 function headersJSON() {
+  const csrfToken = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("csrftoken="))
+    ?.split("=")[1];
+
   return {
     Authorization: `Token ${token}`,
     "Content-Type": "application/json",
+    "X-CSRFToken": csrfToken,
   };
 }
 
@@ -131,6 +146,16 @@ function formatearIntervalo(totalSegundos) {
   ].join(":");
 }
 
+function formatearTipoServicio(tipo) {
+  const tipos = {
+    api: 'API',
+    base_datos: 'Base de Datos',
+    custom: "Otro",
+  };
+
+  return tipos[tipo] ?? tipo;
+}
+
 async function errorMessageResponse(response) {
   try {
     const errorData = await response.json();
@@ -141,12 +166,18 @@ async function errorMessageResponse(response) {
 }
 
 function obtenerValoresFormulario() {
+  const horas = Number(editHoras.value);
+  const minutos = Number(editMinutos.value);
+  const segundos = Number(editSegundos.value);
+
   return {
     nombre: editNombre.value.trim(),
     hostname: editHostname.value.trim(),
     ip_address: editIp.value.trim(),
     puerto: Number(editPuerto.value),
-    estado: editActivo.value === "True",
+    tipo_servicio: editTipo.value,
+    intervalo_chequeo: (horas * 3600) + (minutos * 60) + segundos,
+    activo: editActivo.value === "true",
   };
 }
 
@@ -240,7 +271,7 @@ function renderizarHosts() {
     const valores = [
       host.nombre,
       host.hostname,
-      host.tipo_servicio,
+      formatearTipoServicio(host.tipo_servicio),
       host.ip_address,
       host.puerto,
       formatearIntervalo(host.intervalo_chequeo),
@@ -258,27 +289,59 @@ function renderizarHosts() {
 
     row.appendChild(tdEstado);
 
+    const tdMonitoreo = document.createElement('td');
+
+    const monitoreoBadge = document.createElement('span');
+    monitoreoBadge.className = host.activo
+      ? "badge bg-success"
+      : "badge bg-secondary";
+    
+    monitoreoBadge.textContent = host.activo
+      ? "Habilitado"
+      : "Deshabilitado"
+    
+      tdMonitoreo.appendChild(monitoreoBadge);
+      row.appendChild(tdMonitoreo)
+
     const tdFecha = document.createElement("td");
     tdFecha.textContent = fecha;
     row.appendChild(tdFecha);
 
     const tdAcciones = document.createElement("td");
+    const esPropietario = String(host.propietario) === String(userId);
+    const puedeEditar = isAdmin || (isSystem && esPropietario);
+    const puedeEliminar = isAdmin || (isSystem && esPropietario);
 
-    const editarBtn = document.createElement("button");
-    editarBtn.type = "button";
-    editarBtn.className = "btn btn-sm btn-outline-primary me-2";
-    editarBtn.dataset.action = "editar";
-    editarBtn.dataset.id = host.id;
-    editarBtn.textContent = "Editar";
+    if (puedeEditar) {
+      const editarBtn = document.createElement("button");
+      editarBtn.type = "button";
+      editarBtn.className = "btn btn-sm btn-outline-primary me-2";
+      editarBtn.dataset.action = "editar";
+      editarBtn.dataset.id = host.id;
+      editarBtn.textContent = "Editar";
 
-    const eliminarBtn = document.createElement("button");
-    eliminarBtn.type = "button";
-    eliminarBtn.className = "btn btn-sm btn-outline-danger";
-    eliminarBtn.dataset.action = "eliminar";
-    eliminarBtn.dataset.id = host.id;
-    eliminarBtn.textContent = "Eliminar";
+      tdAcciones.appendChild(editarBtn);
+    }
 
-    tdAcciones.append(editarBtn, eliminarBtn);
+    if (puedeEditar) {
+      const eliminarBtn = document.createElement("button");
+      eliminarBtn.type = "button";
+      eliminarBtn.className = "btn btn-sm btn-outline-danger";
+      eliminarBtn.dataset.action = "eliminar";
+      eliminarBtn.dataset.id = host.id;
+      eliminarBtn.textContent = "Eliminar";
+
+      tdAcciones.append(eliminarBtn);
+    }
+
+    if (!puedeEditar && !puedeEliminar) {
+      const sinPermisos = document.createElement("span");
+      sinPermisos.className = "text-muted";
+      sinPermisos.textContent = "Sin permisos";
+
+      tdAcciones.appendChild(sinPermisos);
+    }
+
     row.appendChild(tdAcciones);
     tbody.appendChild(row);
   });
@@ -304,9 +367,15 @@ tbody.addEventListener("click", async (e) => {
     editHostname.value = host.hostname ?? "";
     editIp.value = host.ip_address ?? "";
     editPuerto.value = host.puerto ?? "";
+    editTipo.value = host.tipo_servicio ?? "";
 
-    editActivo.value =
-      host.activo === false || host.activo === "False" ? "False" : "True";
+    const intervalo = Number(host.intervalo_chequeo) || 0;
+
+    editHoras.value = Math.floor(intervalo / 3600);
+    editMinutos.value = Math.floor((intervalo % 3600) / 60);
+    editSegundos.value = intervalo % 60;
+
+    editActivo.value = String(host.activo);
 
     valoresOriginales = normalizarHost(host);
 
@@ -320,223 +389,229 @@ tbody.addEventListener("click", async (e) => {
   }
 });
 
-formEdit.addEventListener("submit", async (e) => {
-  e.preventDefault();
+if (formEdit) {
+  formEdit.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-  editError.textContent = "";
+    editError.textContent = "";
 
-  if (!formEdit.reportValidity()) return;
+    if (!formEdit.reportValidity()) return;
 
-  if (!valoresOriginales) {
-    editError.textContent = "No se pudieron recuperar los datos originales";
-    return;
-  }
-
-  const valoresActuales = obtenerValoresFormulario();
-  const cambios = {};
-
-  for (const field of Object.keys(valoresActuales)) {
-    if (valoresActuales[field] !== valoresOriginales[field]) {
-      cambios[field] = valoresActuales[field];
-    }
-  }
-
-  if (Object.keys(cambios).length === 0) {
-    modalEdit.hide();
-    return;
-  }
-
-  const id = editId.value;
-
-  guardarBtn.disabled = true;
-  guardarBtn.textContent = "Guardando...";
-
-  try {
-    const response = await fetch(`/api/hosts/${encodeURIComponent(id)}/`, {
-      method: "PATCH",
-      headers: headersJSON(),
-      body: JSON.stringify(cambios),
-    });
-
-    if (!response.ok) {
-      throw new Error(await errorMessageResponse(response));
+    if (!valoresOriginales) {
+      editError.textContent = "No se pudieron recuperar los datos originales";
+      return;
     }
 
-    const updatedHost = await response.json();
+    const valoresActuales = obtenerValoresFormulario();
+    const cambios = {};
 
-    const index = hosts.findIndex((host) => String(host.id) === String(id));
-
-    if (index !== -1) {
-      hosts[index] = updatedHost;
+    for (const field of Object.keys(valoresActuales)) {
+      if (valoresActuales[field] !== valoresOriginales[field]) {
+        cambios[field] = valoresActuales[field];
+      }
     }
 
-    renderizarHosts();
+    if (Object.keys(cambios).length === 0) {
+      modalEdit.hide();
+      return;
+    }
 
-    valoresOriginales = null;
-    modalEdit.hide();
-  } catch (error) {
-    console.error("Error al actualizar el host:", error);
-    editError.textContent = "No se pudieron guardar los cambios";
-  } finally {
-    guardarBtn.disabled = false;
-    guardarBtn.textContent = "Guardar cambios";
-  }
-});
+    const id = editId.value;
+
+    guardarBtn.disabled = true;
+    guardarBtn.textContent = "Guardando...";
+
+    try {
+      const response = await fetch(`/api/hosts/${encodeURIComponent(id)}/`, {
+        method: "PATCH",
+        headers: headersJSON(),
+        body: JSON.stringify(cambios),
+      });
+
+      if (!response.ok) {
+        throw new Error(await errorMessageResponse(response));
+      }
+
+      const updatedHost = await response.json();
+
+      const index = hosts.findIndex((host) => String(host.id) === String(id));
+
+      if (index !== -1) {
+        hosts[index] = updatedHost;
+      }
+
+      renderizarHosts();
+
+      valoresOriginales = null;
+      modalEdit.hide();
+    } catch (error) {
+      console.error("Error al actualizar el host:", error);
+      editError.textContent = "No se pudieron guardar los cambios";
+    } finally {
+      guardarBtn.disabled = false;
+      guardarBtn.textContent = "Guardar cambios";
+    }
+  });
+}
 
 cargarHosts().catch((error) => {
   console.error("Error al cargar los hosts:", error);
 });
 
-function cambiarPaso(step) {
-  pasoActual = step;
+if (isAdmin || isSystem) {
+  function cambiarPaso(step) {
+    pasoActual = step;
 
-  step1.classList.toggle("d-none", step !== 1);
-  step2.classList.toggle("d-none", step !== 2);
+    step1.classList.toggle("d-none", step !== 1);
+    step2.classList.toggle("d-none", step !== 2);
 
-  btnAnterior.classList.toggle("d-none", step !== 2);
-  btnSiguiente.classList.toggle("d-none", step !== 1);
-  btnCrearGuardar.classList.toggle("d-none", step !== 2);
+    btnAnterior.classList.toggle("d-none", step !== 2);
+    btnSiguiente.classList.toggle("d-none", step !== 1);
+    btnCrearGuardar.classList.toggle("d-none", step !== 2);
 
-  stepText.textContent =
-    step === 1 ? "Paso 1 de 2: Conexión" : "Paso 2 de 2: Configuración";
+    stepText.textContent =
+      step === 1 ? "Paso 1 de 2: Conexión" : "Paso 2 de 2: Configuración";
 
-  const porcentaje = step === 1 ? "50" : "100";
+    const porcentaje = step === 1 ? "50" : "100";
 
-  progress.style.width = `${porcentaje}%`;
-  progress.setAttribute("aria-valuenow", porcentaje);
+    progress.style.width = `${porcentaje}%`;
+    progress.setAttribute("aria-valuenow", porcentaje);
 
-  crearError.textContent = "";
-}
-
-function validarPaso(step) {
-  const fields = step.querySelectorAll("input, select, textarea");
-
-  for (const field of fields) {
-    if (!field.checkValidity()) {
-      field.reportValidity();
-      return false;
-    }
-  }
-  return true;
-}
-
-step1.addEventListener("keydown", (e) => {
-  if (e.key !== "Enter") return;
-
-  if (e.target.tagName === "TEXTAREA") return;
-
-  e.preventDefault();
-
-  if (!validarPaso(step1)) return;
-
-  cambiarPaso(2);
-});
-
-btnCreateHost.addEventListener("click", () => {
-  formCreate.reset();
-
-  cambiarPaso(1);
-
-  crearError.textContent = "";
-  btnCrearGuardar.disabled = false;
-  btnCrearGuardar.textContent = "Crear host";
-  btnAnterior.disabled = false;
-  btnSiguiente.disabled = false;
-
-  modalCreate.show();
-});
-
-btnSiguiente.addEventListener("click", () => {
-  if (!validarPaso(step1)) return;
-
-  cambiarPaso(2);
-});
-
-btnAnterior.addEventListener("click", () => {
-  cambiarPaso(1);
-});
-
-modalCreateElement.addEventListener("hidden.bs.modal", () => {
-  formCreate.reset();
-
-  cambiarPaso(1);
-
-  crearError.textContent = "";
-  btnCrearGuardar.disabled = false;
-  btnCrearGuardar.textContent = "Crear host";
-  btnAnterior.disabled = false;
-  btnSiguiente.disabled = false;
-});
-
-formCreate.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  crearError.textContent = "";
-
-  if (pasoActual === 1) {
-    if (validarPaso(step1)) {
-      cambiarPaso(2);
-    }
-    return;
+    crearError.textContent = "";
   }
 
-  if (!validarPaso(step2)) {
+  function validarPaso(step) {
+    const fields = step.querySelectorAll("input, select, textarea");
+
+    for (const field of fields) {
+      if (!field.checkValidity()) {
+        field.reportValidity();
+        return false;
+      }
+    }
+    return true;
+  }
+
+  step1.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+
+    if (e.target.tagName === "TEXTAREA") return;
+
+    e.preventDefault();
+
+    if (!validarPaso(step1)) return;
+
     cambiarPaso(2);
-    validarPaso(step2);
-    return;
-  }
+  });
 
-  if (!validarIntervalo()) return;
+  btnCreateHost.addEventListener("click", () => {
+    formCreate.reset();
 
-  const newHost = {
-    nombre: crearNombre.value.trim(),
-    hostname: crearHostname.value.trim(),
-    ip_address: crearIp.value.trim(),
-    puerto: Number(crearPuerto.value),
-    tipo_servicio: crearTipo.value,
-    intervalo_chequeo: obtenerIntervaloSegundos(),
-    activo: crearActivo.value === "true",
-  };
+    cambiarPaso(1);
 
-  btnCrearGuardar.disabled = true;
-  btnAnterior.disabled = true;
-  btnSiguiente.disabled = true;
-
-  btnCrearGuardar.textContent = "Creando...";
-
-  try {
-    const response = await fetch("/api/hosts/", {
-      method: "POST",
-      headers: headersJSON(),
-      body: JSON.stringify(newHost),
-    });
-
-    if (!response.ok) {
-      throw new Error(await errorMessageResponse(response));
-    }
-
-    const createdHost = await response.json();
-
-    hosts = hosts.filter((host) => String(host.id) !== String(createdHost.id));
-
-    hosts.push(createdHost);
-
-    renderizarHosts();
-
-    modalCreate.hide();
-  } catch (error) {
-    console.error("Error al crear el host:", error);
-
-    crearError.textContent = "No se puede crear el host.";
-  } finally {
+    crearError.textContent = "";
     btnCrearGuardar.disabled = false;
+    btnCrearGuardar.textContent = "Crear host";
     btnAnterior.disabled = false;
     btnSiguiente.disabled = false;
 
-    btnCrearGuardar.textContent = "Crear host";
-  }
-});
+    modalCreate.show();
+  });
 
-cargarHosts().catch((error) => {
-  console.error("Error al cargar los hosts:", error);
-});
+  btnSiguiente.addEventListener("click", () => {
+    if (!validarPaso(step1)) return;
+
+    cambiarPaso(2);
+  });
+
+  btnAnterior.addEventListener("click", () => {
+    cambiarPaso(1);
+  });
+
+  modalCreateElement.addEventListener("hidden.bs.modal", () => {
+    formCreate.reset();
+
+    cambiarPaso(1);
+
+    crearError.textContent = "";
+    btnCrearGuardar.disabled = false;
+    btnCrearGuardar.textContent = "Crear host";
+    btnAnterior.disabled = false;
+    btnSiguiente.disabled = false;
+  });
+
+  formCreate.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    crearError.textContent = "";
+
+    if (pasoActual === 1) {
+      if (validarPaso(step1)) {
+        cambiarPaso(2);
+      }
+      return;
+    }
+
+    if (!validarPaso(step2)) {
+      cambiarPaso(2);
+      validarPaso(step2);
+      return;
+    }
+
+    if (!validarIntervalo()) return;
+
+    const newHost = {
+      nombre: crearNombre.value.trim(),
+      hostname: crearHostname.value.trim(),
+      ip_address: crearIp.value.trim(),
+      puerto: Number(crearPuerto.value),
+      tipo_servicio: crearTipo.value,
+      intervalo_chequeo: obtenerIntervaloSegundos(),
+      activo: crearActivo.value === "true",
+    };
+
+    btnCrearGuardar.disabled = true;
+    btnAnterior.disabled = true;
+    btnSiguiente.disabled = true;
+
+    btnCrearGuardar.textContent = "Creando...";
+
+    try {
+      const response = await fetch("/api/hosts/", {
+        method: "POST",
+        headers: headersJSON(),
+        body: JSON.stringify(newHost),
+      });
+
+      if (!response.ok) {
+        throw new Error(await errorMessageResponse(response));
+      }
+
+      const createdHost = await response.json();
+
+      hosts = hosts.filter(
+        (host) => String(host.id) !== String(createdHost.id),
+      );
+
+      hosts.push(createdHost);
+
+      renderizarHosts();
+
+      modalCreate.hide();
+    } catch (error) {
+      console.error("Error al crear el host:", error);
+
+      crearError.textContent = "No se puede crear el host.";
+    } finally {
+      btnCrearGuardar.disabled = false;
+      btnAnterior.disabled = false;
+      btnSiguiente.disabled = false;
+
+      btnCrearGuardar.textContent = "Crear host";
+    }
+  });
+
+  cargarHosts().catch((error) => {
+    console.error("Error al cargar los hosts:", error);
+  });
+}

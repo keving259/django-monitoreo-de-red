@@ -3,7 +3,9 @@
 
 {% block table_header %}
   <h4 class="mb-0">Hosts Registrados</h4>
-  <button type="button" class="btn btn-success" id='btn-crear-host'><i class="bi bi-plus-lg">Nuevo Host</i></button>
+  {% if is_admin or is_system %}
+    <button type="button" class="btn btn-success" id='btn-crear-host'><i class="bi bi-plus-lg">Nuevo Host</i></button>
+  {% endif %}
 {% endblock table_header %}
 
 
@@ -17,7 +19,8 @@
               <th scope="col">Dirección IP</th>
               <th scope="col">Puerto</th>
               <th scope="col">Intervalo de Chequeo</th>
-              <th scope="col">Estado</th>
+              <th scope="col">Estado de Conexión</th>
+              <th scope="col">Monitoreo</th>
               <th scope="col">Último chequeo</th>
               <th scope='col'>Acciones</th> 
             </tr>
@@ -27,9 +30,18 @@
       </div>
     </div>
 
+    <script>
+      const isAdmin = {{ is_admin|yesno:"true,false" }};
+      const isSystem = {{ is_system|yesno:"true,false" }};
+      const userId = {{user_id}};
+    </script>
+    <script src="{% static 'js/hosts.js' %}" defer></script>
+    {% endblock content %}
+
+    {% block modals %}
     <!-- Modal para editar host -->
     <div class="modal fade" id="modalEditar" tabindex="-1" aria-labelledby="modalEditarLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title" id="modalEditarLabel">Editar Host</h5>
@@ -53,12 +65,40 @@
               <div class="mb-3">
                 <label for="editar-puerto" class="form-label">Puerto</label>
                 <input type="number" class="form-control" id="editar-puerto" min="1" max="65535" required>
+                <div class="mb-3">
+                  <label for="editar-tipo" class="form-label">Tipo de servicio</label>
+                  <select id="editar-tipo" class="form-select" required>
+                    <option value="api">API</option>
+                    <option value="base_datos">Base de datos</option>
+                    <option value="custom">Otro</option>
+                  </select>
+                </div>
               </div>
               <div class="mb-3">
-                <label for="editar-activo" class='form-label'>Estado</label>
+                <label class="form-label">Intervalo de chequeo</label>
+                <div class="row g-2">
+                  <div class="col">
+                    <label for="editar-horas" class="form-label">Horas</label>
+                    <input type="number" class="form-control" id="editar-horas" min="0" max="999" step='1' required>
+                    <small class="text-muted">Horas</small>
+                  </div>
+                  <div class="col">
+                    <label for="editar-minutos" class="form-label">Minutos</label>
+                    <input type="number" class="form-control" id="editar-minutos" min="0" max="59" step='1' required>
+                    <small class="text-muted">Minutos</small>
+                  </div>
+                  <div class="col">
+                    <label for="editar-segundos" class="form-label">Segundos</label>
+                    <input type="number" class="form-control" id="editar-segundos" min="0" max="59" step='1' required>
+                    <small class="text-muted">Segundos</small>
+                  </div>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="editar-activo" class='form-label'>Monitoreo</label>
                 <select class='form-select' id='editar-activo' required>
-                  <option value='true'>Activo</option>
-                  <option value='false'>Inactivo</option>
+                  <option value='true'>Habilitado</option>
+                  <option value='false'>Deshabilitado</option>
                 </select>
               </div>
               <div id='editar-error' class="text-danger mt-2" role="alert" aria-live="polite"></div>
@@ -110,27 +150,28 @@
                 </div>
               </div>
               <div id='crear-step-2' class='d-none'>
+
                 <!-- Contenido del paso 2 -->
-                <div class="mb-3">
-                  <label for="crear-tipo" class="form-label">Tipo de servicio</label>
-                  <select name="form-select" id="crear-tipo" class="form-control" required>
-                    <option value="">Selecciona un tipo</option>
-                    <option value="api">API</option>
-                    <option value="base_datos">Base de datos</option>
-                    <option value="custom">Otro</option>
-                  </select>
-                </div>
+              <div class="mb-3">
+                <label for="crear-tipo" class="form-label">Tipo de servicio</label>
+                <select name="form-select" id="crear-tipo" class="form-control" required>
+                  <option value="">Selecciona un tipo</option>
+                  <option value="api">API</option>
+                  <option value="base_datos">Base de datos</option>
+                  <option value="custom">Otro</option>
+                </select>
+              </div>
                 <div class="mb-3 row g-2">
                   <div class="col">
-                    <label for="crear-horas" class="from-label">Horas</label>
+                    <label for="crear-horas" class="form-label">Horas</label>
                     <input type="number" class="form-control" id="crear-horas" min="0" max="999" step='1' value="0" required>
                   </div>
                   <div class="col">
-                    <label for="crear-minutos" class="from-label">Minutos</label>
+                    <label for="crear-minutos" class="form-label">Minutos</label>
                     <input type="number" class="form-control" id="crear-minutos" min="0" max="59" step="1" value="1" required>
                   </div>
                   <div class="col">
-                    <label for="crear-segundos" class="from-label">Segundos</label>
+                    <label for="crear-segundos" class="form-label">Segundos</label>
                     <input type="number" class="form-control" id="crear-segundos" min="0" max="59" step="1" value="0" required>
                   </div>
                 </div>
@@ -155,6 +196,4 @@
         </div>
       </div>
     </div>
-
-    <script src="{% static 'js/hosts.js' %}" defer></script>
-    {% endblock content %}
+    {% endblock modals %}
