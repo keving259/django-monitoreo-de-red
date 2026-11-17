@@ -6,6 +6,8 @@ import re
 from statistics import median
 import socket
 import time
+from django.utils import timezone
+from network_checks.models import Host, Chequeo, Alerta
 
 @dataclass
 class CheckResult:
@@ -25,7 +27,30 @@ def check_host(host):
         
     else:
         return result
+
+def ejecutar_revision_hosts():
+    hosts_revisados = 0
     
+    for host in Host.objects.filter(activo=True):
+        resultado = check_host(host)
+        
+        chequeo = Chequeo.objects.create(
+            host=host,
+            fecha_hora=timezone.now(),
+            estado=resultado.estado,
+            tiempo_respuesta_ms=resultado.tiempo_respuesta_ms,
+        )
+        
+        if resultado.estado != 'up':
+            Alerta.objects.create(
+                chequeo=chequeo,
+                nivel='critical',
+                mensaje=resultado.mensaje_error or 'Host no disponible',
+            )
+        
+        hosts_revisados += 1
+    
+    return hosts_revisados
 
 def ping(host):
     param = '-n' if platform.system().lower() == 'windows' else '-c'
