@@ -2,7 +2,7 @@ from rest_framework import routers
 from django.urls import path, include
 from .api import HostViewSet, CheckViewSet, AlertViewSet
 from . import views
-from .views_cron import CheckHostsCronView
+from network_checks.views_cron import CheckHostsCronView
 from hosts.views import hosts
 from network_checks.views import checks, alerts
 from django.contrib import admin
@@ -31,6 +31,5 @@ urlpatterns = [
     
     # API
     path('api/', include(router.urls)),
-    path('api/', include('network_checks.urls')),
     path('api/cron/revisar-hosts/', CheckHostsCronView.as_view(), name='cron-revisar-hosts'),
 ]

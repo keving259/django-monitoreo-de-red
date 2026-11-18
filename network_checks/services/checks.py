@@ -2,9 +2,11 @@ from dataclasses import dataclass
 from typing import Optional
 import platform
 import subprocess
+import re
 from statistics import median
 import socket
 import time
+from django.utils import timezone
 from hosts.models import Host
 from network_checks.models import Chequeo, Alerta
 
@@ -12,54 +14,65 @@ from network_checks.models import Chequeo, Alerta
 class CheckResult:
     estado: str
     tiempo_respuesta_ms: Optional[int]
-    error: Optional[str] = None
+    mensaje_error: Optional[str] = None
     
 def check_host(host):
     ping_result = ping(host.ip_address)
     result = CheckResult(estado=ping_result['estado'], tiempo_respuesta_ms=ping_result['tiempo'])
     
     if result.estado == 'up':
-        if host.tipo_servicio in ('web', 'api'):
+        if host.tipo_servicio in 'api':
             return _check_http(host)
         else:
             return _check_socket(host)
         
     else:
         return result
-    
 
-def ping(host, count=4, timeout=1):
-    times = []
+def ejecutar_revision_hosts():
+    hosts_revisados = 0
     
-    is_windows = platform.system().lower() == 'windows'
-    count_param = '-n' if is_windows else '-c'
-    timeout_param = '-w' if is_windows else '-W'
-    timeout_value = str(int(timeout * 1000)) if is_windows else str(timeout)
-    
-    for _ in range(count):
-        inicio = time.monotonic()
+    for host in Host.objects.filter(activo=True):
+        resultado = check_host(host)
         
-        try:
-            result = subprocess.run(
-                ['ping', count_param, '1', timeout_param, timeout_value, host],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=timeout+1
+        chequeo = Chequeo.objects.create(
+            host=host,
+            fecha_hora=timezone.now(),
+            estado=resultado.estado,
+            tiempo_respuesta_ms=resultado.tiempo_respuesta_ms,
+        )
+        
+        if resultado.estado != 'up':
+            Alerta.objects.create(
+                chequeo=chequeo,
+                nivel='critical',
+                mensaje=resultado.error or 'Host no disponible',
             )
-            
-            if result.returncode == 0:
-                times.append(
-                    (time.monotonic() - inicio) * 1000
-                )
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            pass
         
+        hosts_revisados += 1
+    
+    return hosts_revisados
+
+def ping(host):
+    param = '-n' if platform.system().lower() == 'windows' else '-c'
+    cmd = ['ping', param, '4', host]
+    
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True
+    )
+    
+    output = result.stdout
+    
+    times = re.findall(r'tiempo[=<]\s*(\d+)\s*m', output, re.IGNORECASE)
+    times = [int(t) for t in times]
+    
     if times:
         return {
             'estado' : 'up',
-            'tiempo' : round(median(times), 2)
+            'tiempo' : median(times)
         }
-    
     else:
         return {
             'estado' : 'timeout',
@@ -92,21 +105,21 @@ def _check_http(host):
             return CheckResult(
                 estado='down',
                 tiempo_respuesta_ms=None,
-                error=f'El servicio en {host.ip_address}:{host.puerto} no respondió mediante HTTP'
+                mensaje_error=f'El servicio en {host.ip_address}:{host.puerto} no respondió mediante HTTP'
             )
             
     except socket.timeout:
         return CheckResult(
             estado='timeout',
             tiempo_respuesta_ms=None,
-            error=f'Timeout al conectar con {host.ip_address}:{host.puerto}'
+            mensaje_error=f'Timeout al conectar con {host.ip_address}:{host.puerto}'
         )
     
     except OSError as e:
         return CheckResult(
             estado='down',
             tiempo_respuesta_ms=None,
-            error=f'Error al comprobar HTTP en {host.ip_address}:{host.puerto}: {e}'
+            mensaje_error=f'Error al comprobar HTTP en {host.ip_address}:{host.puerto}: {e}'
         )
     
     finally:
@@ -127,36 +140,23 @@ def _check_socket(host):
             return CheckResult(
                 estado='down',
                 tiempo_respuesta_ms=None,
-                error=f'No se puede establecer la conexión con {host.ip_address}:{host.puerto}'
+                mensaje_error=f'No se puede establecer la conexión con {host.ip_address}:{host.puerto}'
             )
             
     except socket.timeout:
         return CheckResult(
             estado='timeout',
             tiempo_respuesta_ms=None,
-            error=f'Tiempo al conectar con {host.ip_address}:{host.puerto}'
+            mensaje_error=f'Tiempo al conectar con {host.ip_address}:{host.puerto}'
         )
     
     except OSError as e:
         return CheckResult(
             estado='down',
             tiempo_respuesta_ms=None,
-            error=f'Error al comprobar el puerto en {host.ip_address}:{host.puerto}: {e}'
+            mensaje_error=f'Error al comprobar el puerto en {host.ip_address}:{host.puerto}: {e}'
         )
         
     finally:
         sock.close()
     
-def check_all_hosts():
-    for host in Host.objects.filter(activo=True):
-        result = check_host(host)
-        check = Chequeo.objects.create(
-            host=host,
-            estado=result.estado,
-            tiempo_respuesta_ms=result.tiempo_respuesta_ms
-        )
-        if result.estado == 'up':
-            Alerta.objects.filter(chequeo__host=host, resuelta=False).update(resuelta=True)
-        else:
-            nivel = 'warning' if result.estado == 'timeout' else 'critical'
-            Alerta.objects.create(chequeo=check, nivel=nivel, mensaje=result.error or 'Host no disponible')
